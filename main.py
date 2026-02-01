@@ -1,84 +1,72 @@
 import nltk
+import stanza
 import re
-import string  
+import string
 # Download required NLTK resources (run once)
 nltk.download('punkt')
 nltk.download('punkt_tab')
 nltk.download('stopwords')
 nltk.download('wordnet')
 nltk.download('omw-1.4')
-
-from nltk.tokenize import word_tokenize
+stanza.download('en')
+from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 
-#input text
-text = "My name is Trang. I'm 20 years old, I'm a third-year students at HUFLIT University and I learn English Teaching major."
-print("Original Text:")
-print(text)
-
-# 1. Tokenization
-token = word_tokenize(text)
-print("TOKENS:\n", token)
-print("-" * 60)
-
-# 2. Lowercasing
-lowercased_tokens = [word.lower() for word in token]
-print("Lowercased Tokens:\n", lowercased_tokens)
-print("-" * 60)
-
-# 3. Stopword Removal
+# Initialize Stanza pipeline
+nlp = stanza.Pipeline(lang='en', processors='tokenize,pos,lemma')
 stop_words = set(stopwords.words('english'))
-filtered_tokens = [word for word in lowercased_tokens if word not in stop_words]
-print("Tokens after Stopword Removal:\n", filtered_tokens)
-print("-" * 60)
-
-# 4. Punctuation Removal
-punctuation_removed_tokens = [word for word in filtered_tokens if word not in string.punctuation]
-print("Tokens after Punctuation Removal:\n", punctuation_removed_tokens)
-print("-" * 60)
-
-# 5. Stemming
 stemmer = PorterStemmer()
-stemmed_tokens = [stemmer.stem(word) for word in punctuation_removed_tokens]
-print("Stemmed Tokens:\n", stemmed_tokens)
-print("-" * 60)
-
-# 6. Lemmatization
 lemmatizer = WordNetLemmatizer()
-lemmqtized_tokens = [lemmatizer.lemmatize(word) for word in punctuation_removed_tokens]
-print("Lemmatized Tokens:\n", lemmatized_tokens)
-print("-" * 60)
+text = " Hi there! I'm Trang. I'm learning Natural Language Processing. Let's see how it works. "
+print("Original Text: \n", text)
+print("-"*60)
+#NLTK Sentence Segmentation
+sentences = sent_tokenize(text) #split text into sentences
+print("NLTK Sentence Segmentation:")
+for i, sent in enumerate(sentences, 1):
+    print(f"Sentence {i}: {sent}")
+print("-"*60)
 
-# Text Normalization Function
-def nornalize_text(input_text):
-    # Tokenization
-    tokens = word_tokenize(input_text)
+#NLTK Word Tokenization
+nltk_words = word_tokenize(text) #split text into words
+print("NLTK Word Tokenization:")
+print(nltk_words)
+print("-"*60)
+#nltk normalization
+#Lowercasing all words
+lowercased_words = [word.lower() for word in nltk_words]
+print("Lowercased Words:")
+print(lowercased_words)
+print("-"*60)
 
-    # Lowercasing
-    lowercased_tokens = [word.lower() for word in tokens]
+#Removing punctuation
+punctuation_removed_words = [word for word in lowercased_words if word not in string.punctuation]
+print("Punctuation Removed Words:")
+print(punctuation_removed_words)
+print("-"*60)
 
-    # Stopword Removal
-    filtered_tokens = [word for word in lowercased if word not in stop_words]
+#Reconstruct normalized text
+normalized_text = ' '.join(punctuation_removed_words)
+print("normalized text:\n", normalized_text)
+print("-"*60)
 
-    # Punctuation Removal
-    punctuation_removed = [word for word in filtered if word not in string.punctuation]
+#Stanza pos tagging
+doc = nlp(normalized_text) #run stanza pipeline on normalized text
+print("Stanza POS Tagging:")
+for sentence in doc.sentences: #iterate through sentences
+    for word in sentence.words: #iterate through words in each sentence
+        print(f"Word: {word.text}\tPOS: {word.upos}")
+print("-"*60)
+#stanza depedency parsing
+print("Stanza Dependency Parsing:")
+for sentence in doc.sentences: 
+    for word in sentence.words:
+                print(f"Word: {word.text}\tHead: {word.head}\tDepRel: {word.deprel}")
+print("-"*60)
 
-    # Stemming
-    stemmed = [stemmer .stem(word) for word in punctuation_removed]
-
-    # Lemmatization
-    lemmatized = [lemmatizer.lemmatize(word) for word in punctuation_removed]
-
-return {
-     "tokens": tokens,
-     "lowercased": lowercased,
-     "filtered": filtered,
-     "punctuation_removed": punctuation_removed,
-     "stemmed": stemmed,
-     "lemmatized": lemmatized
-}
-print("Text Normalization Function Output:")
-print(normalize_text(text))
-print("-" * 60)
-print("End of Text Normalization Process")
+#Stanza Constituency Parsing
+# Note: Stanza does not have built-in constituency parsing; this is a placeholder
+print("STANZA CONSTITUENCY PARSING:(Not available in Stanza)")
+print("Stanza does not support constituency parsing directly.")
+print("-"*60)
