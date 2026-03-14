@@ -1,56 +1,91 @@
-import nltk
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import classification_report, confusion_matrix
-import matplotlib.pyplot as plt
-import seaborn as sns
+import spacy
+import benepar
+from nltk import Tree
+from spacy import displacy
 
-# Download the Reuters dataset from NLTK and load it
-nltk.download('reuters')
-from nltk.corpus import reuters
+# Load spaCy model
+nlp = spacy.load("en_core_web_md")
 
-# Print the number of documents and categories in the Reuters dataset
-print(f"Number of documents: {len(reuters.fileids())}")
-print(f"Number of categories: {len(reuters.categories())}")
+# Download and add Benepar model
+benepar.download("benepar_en3")
+nlp.add_pipe("benepar", config={"model": "benepar_en3"})
 
-# Data preparation
-categories = ['grain', 'crude', 'trade']
-documents = [(reuters.raw(fileid), category) 
-             for category in categories for fileid in reuters.fileids(category)]
+def save_trees_to_html(doc, filename="syntax_trees.html"):
+    html_parts = []
 
-texts, labels = zip(*documents)
-X_train, X_test, y_train, y_test = train_test_split(texts, labels, test_size=0.2, random_state=42)
+    # HTML header + CSS
+    html_parts.append("""
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Constituency & Dependency Trees</title>
+        <style>
+            body { font-family: Arial, sans-serif; }
+            .sentence-block { margin-bottom: 50px; }
+            .container {
+                display: flex;
+                gap: 30px;
+            }
+            .tree-box {
+                width: 50%;
+                border: 1px solid #ccc;
+                padding: 15px;
+            }
+            pre {
+                font-size: 14px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+    <h1>Constituency & Dependency Tree Visualization</h1>
+    """)
 
-# Text Vectorization using TF-IDF
-tfidf_vectorizer = TfidfVectorizer(stop_words='english', max_df=0.7)
-X_train_tf = tfidf_vectorizer.fit_transform(X_train)
-X_test_tf = tfidf_vectorizer.transform(X_test)
+    # Loop through sentences
+    for i, sent in enumerate(doc.sents, 1):
+        html_parts.append(f"<div class='sentence-block'>")
+        html_parts.append(f"<h2>Sentence {i}: {sent.text}</h2>")
+        html_parts.append("<div class='container'>")
 
-# Model Traning and Prediction
-classifier = MultinomialNB()
-classifier.fit(X_train_tf, y_train)
-y_pred = classifier.predict(X_test_tf)
+        # Constituency tree
+        html_parts.append("<div class='tree-box'><h3>Constituency Tree</h3>")
+        try:
+            parse_string = sent._.parse_string
+            tree = Tree.fromstring(parse_string)
+            html_parts.append(f"<pre>{tree.pformat()}</pre>")
+        except Exception as e:
+            html_parts.append(f"<p>Error: {e}</p>")
+        html_parts.append("</div>")
 
-# Evaluation
-print("Classification Report:")
-print("==================================")
-print(classification_report(y_test, y_pred, labels=categories))
-print("\n")
+        # Dependency tree
+        html_parts.append("<div class='tree-box'><h3>Dependency Tree</h3>")
+        dep_html = displacy.render(
+            sent,
+            style="dep",
+            jupyter=False,
+            options={"distance": 90}
+        )
+        html_parts.append(dep_html)
+        html_parts.append("</div>")
 
-# Visualization of the Confusion Matrix
-conf_matrix = confusion_matrix(y_test, y_pred, labels=categories)
-print("Confusion Matrix:")
-print("==================================")
-print(conf_matrix)
-print("\n")
+        html_parts.append("</div></div>")
 
-# Heatmap Visualization
-sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=categories, yticklabels=categories)
-plt.xlabel('Predicted')
-plt.ylabel('Actual')
-plt.title('Confusion Matrix Heatmap')
-plt.show()
+    # Close HTML
+    html_parts.append("</body></html>")
 
+    # Write file
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("".join(html_parts))
 
+    print(f"✅ Trees saved to {filename}")
 
+if __name__ == "__main__":
+    text = (
+        "I enjoy learning linguistics. "
+        "Why do students study syntax? "
+        "Please analyze this sentence carefully. "
+        "What a fascinating subject linguistics is!"
+    )
+
+    doc = nlp(text)
+    save_trees_to_html(doc)
